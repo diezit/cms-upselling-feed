@@ -1,5 +1,10 @@
 {
   "version": 1,
+  "sites": [
+    { "id": "ibalo", "name": "Ibalo" },
+    { "id": "buitengoed", "name": "Buitengoed" },
+    { "id": "hh", "name": "Healthy Hairdresser" }
+  ],
   "items": [
     {
       "id": "vitaliteitsplan-2026",
@@ -11,6 +16,7 @@
       "priority": 1,
       "tags": ["seo", "performance"],
       "locations": ["dashboard", "pages-sidebar"],
+      "sites": ["*"],
       "exclude_if_plugin": ["diezit/vitaliteitsplan"],
       "start_date": "2026-05-01",
       "end_date": null
@@ -25,6 +31,7 @@
       "priority": 2,
       "tags": ["privacy", "avg", "cookies"],
       "locations": ["dashboard", "pages-editor"],
+      "sites": ["*", "!hh"],
       "exclude_if_plugin": ["diezit/cookieconsent"],
       "start_date": "2026-04-01",
       "end_date": "2026-12-31"
@@ -39,6 +46,7 @@
       "priority": 3,
       "tags": ["backup", "security"],
       "locations": ["dashboard", "media-manager"],
+      "sites": ["ibalo", "buitengoed"],
       "exclude_if_plugin": ["diezit/backupmanager"],
       "start_date": null,
       "end_date": null

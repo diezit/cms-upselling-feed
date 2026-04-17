@@ -17,25 +17,73 @@
       <div class="app-header-actions">
         <button type="button" class="btn btn-secondary" id="btn-import">Import JSON</button>
         <button type="button" class="btn btn-secondary" id="btn-export">Export JSON</button>
-        <button type="button" class="btn btn-primary" id="btn-add">+ Add Item</button>
       </div>
     </header>
 
-    <!-- Item List -->
-    <div class="item-list" id="item-list">
-      <!-- Populated by JS -->
+    <!-- Main Tabs -->
+    <nav class="main-tabs" role="tablist">
+      <button type="button" class="main-tab active" data-view="items" role="tab">Items</button>
+      <button type="button" class="main-tab" data-view="sites" role="tab">Sites</button>
+    </nav>
+
+    <!-- ============ Items View ============ -->
+    <div class="view" id="view-items">
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <div class="filter-bar-start">
+          <label for="site-filter" class="filter-label">Filter by site:</label>
+          <select id="site-filter" class="filter-select">
+            <option value="">All items</option>
+            <!-- Populated by JS -->
+          </select>
+        </div>
+        <button type="button" class="btn btn-primary" id="btn-add">+ Add Item</button>
+      </div>
+
+      <!-- Item List -->
+      <div class="item-list" id="item-list">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-state" id="empty-state" hidden>
+        <div class="empty-state-icon">&#128230;</div>
+        <h2>No items yet</h2>
+        <p>Add your first upselling item to get started.</p>
+        <button type="button" class="btn btn-primary" id="btn-add-empty">+ Add Item</button>
+      </div>
+
+      <!-- Filter Empty State -->
+      <div class="empty-state" id="filter-empty-state" hidden>
+        <div class="empty-state-icon">&#128269;</div>
+        <h2>No items for this site</h2>
+        <p>No active items match the selected site filter.</p>
+      </div>
     </div>
 
-    <!-- Empty State -->
-    <div class="empty-state" id="empty-state" hidden>
-      <div class="empty-state-icon">&#128230;</div>
-      <h2>No items yet</h2>
-      <p>Add your first upselling item to get started.</p>
-      <button type="button" class="btn btn-primary" id="btn-add-empty">+ Add Item</button>
+    <!-- ============ Sites View ============ -->
+    <div class="view" id="view-sites" hidden>
+      <div class="filter-bar">
+        <div class="filter-bar-start">
+          <span class="filter-label">Manage known sites</span>
+        </div>
+        <button type="button" class="btn btn-primary" id="btn-add-site">+ Add Site</button>
+      </div>
+
+      <div class="item-list" id="site-list">
+        <!-- Populated by JS -->
+      </div>
+
+      <div class="empty-state" id="sites-empty-state" hidden>
+        <div class="empty-state-icon">&#127760;</div>
+        <h2>No sites yet</h2>
+        <p>Add sites to enable site-specific targeting for items.</p>
+        <button type="button" class="btn btn-primary" id="btn-add-site-empty">+ Add Site</button>
+      </div>
     </div>
   </div>
 
-  <!-- Wizard Modal -->
+  <!-- ============ Wizard Modal ============ -->
   <div class="modal-backdrop" id="wizard-modal" hidden>
     <div class="modal">
       <div class="modal-main">
@@ -112,6 +160,34 @@
                 </label>
               </div>
             </div>
+
+            <!-- Site Targeting -->
+            <div class="field">
+              <label>Site Targeting</label>
+              <div class="radio-group" id="site-targeting-mode">
+                <label class="radio-pill">
+                  <input type="radio" name="site-mode" value="all" checked>
+                  <span>All sites</span>
+                </label>
+                <label class="radio-pill">
+                  <input type="radio" name="site-mode" value="include">
+                  <span>Specific sites</span>
+                </label>
+                <label class="radio-pill">
+                  <input type="radio" name="site-mode" value="exclude">
+                  <span>All sites except...</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="field" id="site-checkboxes-field" hidden>
+              <label id="site-checkboxes-label">Select sites</label>
+              <div class="checkbox-group" id="site-checkboxes">
+                <!-- Populated by JS from the sites list -->
+              </div>
+              <span class="field-hint" id="site-no-sites-hint" hidden>No sites defined yet. Add sites in the Sites tab first.</span>
+            </div>
+
             <div class="field">
               <label>Tags</label>
               <div class="chip-input-wrapper" id="tags-wrapper">
@@ -181,7 +257,38 @@
     </div>
   </div>
 
-  <!-- Import Modal -->
+  <!-- ============ Site Modal ============ -->
+  <div class="modal-backdrop site-modal" id="site-modal" hidden>
+    <div class="modal">
+      <div class="modal-main">
+        <div class="modal-header">
+          <h2 id="site-modal-title">Add Site</h2>
+          <button type="button" class="btn btn-icon btn-ghost" id="site-modal-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="step-content">
+          <div class="field">
+            <label for="field-site-name">Site Name *</label>
+            <input type="text" id="field-site-name" placeholder="e.g. Healthy Hairdresser">
+            <span class="error-msg" id="error-site-name" hidden>Site name is required</span>
+          </div>
+          <div class="field">
+            <label for="field-site-id">Site ID (slug)</label>
+            <input type="text" id="field-site-id" placeholder="auto-generated-from-name">
+            <span class="field-hint">Lowercase, no spaces. Auto-generated from name.</span>
+            <span class="error-msg" id="error-site-id" hidden>A site with this ID already exists</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="modal-footer-end">
+            <button type="button" class="btn btn-secondary" id="site-modal-cancel">Cancel</button>
+            <button type="button" class="btn btn-primary" id="site-modal-save">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ Import Modal ============ -->
   <div class="modal-backdrop import-modal" id="import-modal" hidden>
     <div class="modal">
       <div class="modal-main">
@@ -196,7 +303,7 @@
           </div>
           <div class="field">
             <label for="import-textarea">Or paste JSON</label>
-            <textarea id="import-textarea" class="import-area" placeholder='{"version":1,"items":[...]}'></textarea>
+            <textarea id="import-textarea" class="import-area" placeholder='{"version":1,"sites":[...],"items":[...]}'></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -209,12 +316,12 @@
     </div>
   </div>
 
-  <!-- Delete Confirm Dialog -->
+  <!-- ============ Delete Confirm Dialog ============ -->
   <dialog id="delete-dialog">
     <form method="dialog">
-      <p style="margin-block-end:1rem;font-weight:600;">Delete this item?</p>
+      <p style="margin-block-end:1rem;font-weight:600;" id="delete-dialog-heading">Delete this item?</p>
       <p style="margin-block-end:1.5rem;color:var(--color-text-muted);font-size:0.875rem;">
-        This action cannot be undone. The item <strong id="delete-item-name"></strong> will be permanently removed.
+        This action cannot be undone. <strong id="delete-item-name"></strong> will be permanently removed.
       </p>
       <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
         <button type="button" class="btn btn-secondary" id="delete-cancel">Cancel</button>

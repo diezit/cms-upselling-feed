@@ -7,6 +7,7 @@
 // State
 // ---------------------------------------------------------------------------
 let items = [];
+let sites = [];
 let editingIndex = -1; // -1 = adding new
 let currentStep = 0;
 const TOTAL_STEPS = 5;
@@ -16,6 +17,15 @@ const LOCATIONS = ['dashboard', 'pages-sidebar', 'pages-editor', 'media-manager'
 let chipTags = [];
 let chipExclude = [];
 
+// Site editing state
+let editingSiteIndex = -1;
+
+// Current active view
+let activeView = 'items';
+
+// Site filter
+let activeSiteFilter = '';
+
 // ---------------------------------------------------------------------------
 // DOM refs
 // ---------------------------------------------------------------------------
@@ -23,12 +33,33 @@ const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => document.querySelectorAll(sel);
 
 const dom = {
+  // Views
+  viewItems: $('#view-items'),
+  viewSites: $('#view-sites'),
+  // Item list
   itemList: $('#item-list'),
   emptyState: $('#empty-state'),
+  filterEmptyState: $('#filter-empty-state'),
+  // Site list
+  siteList: $('#site-list'),
+  sitesEmptyState: $('#sites-empty-state'),
+  // Filter
+  siteFilter: $('#site-filter'),
+  // Wizard modal
   wizardModal: $('#wizard-modal'),
   wizardTitle: $('#wizard-title'),
+  // Site modal
+  siteModal: $('#site-modal'),
+  siteModalTitle: $('#site-modal-title'),
+  fieldSiteName: $('#field-site-name'),
+  fieldSiteId: $('#field-site-id'),
+  errorSiteName: $('#error-site-name'),
+  errorSiteId: $('#error-site-id'),
+  // Import modal
   importModal: $('#import-modal'),
+  // Delete dialog
   deleteDialog: $('#delete-dialog'),
+  deleteDialogHeading: $('#delete-dialog-heading'),
   deleteItemName: $('#delete-item-name'),
   toastContainer: $('#toast-container'),
   // Wizard fields
@@ -39,12 +70,21 @@ const dom = {
   fieldCtaUrl: $('#field-cta-url'),
   utmPreview: $('#utm-preview'),
   locationsGroup: $('#locations-group'),
+  // Site targeting
+  siteTargetingMode: $('#site-targeting-mode'),
+  siteCheckboxesField: $('#site-checkboxes-field'),
+  siteCheckboxes: $('#site-checkboxes'),
+  siteCheckboxesLabel: $('#site-checkboxes-label'),
+  siteNoSitesHint: $('#site-no-sites-hint'),
+  // Chips
   tagsWrapper: $('#tags-wrapper'),
   tagsInput: $('#tags-input'),
   excludeWrapper: $('#exclude-wrapper'),
   excludeInput: $('#exclude-input'),
+  // Planning
   fieldStartDate: $('#field-start-date'),
   fieldEndDate: $('#field-end-date'),
+  // Media
   fieldImage: $('#field-image'),
   imagePreview: $('#image-preview'),
   // Preview
@@ -102,6 +142,12 @@ function buildUtmUrl(url, itemId) {
   }
 }
 
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 function toast(message, type = '') {
   const el = document.createElement('div');
   el.className = `toast ${type ? `toast-${type}` : ''}`;
@@ -111,38 +157,128 @@ function toast(message, type = '') {
 }
 
 // ---------------------------------------------------------------------------
+// Site Targeting Logic
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse a sites array from an item into { mode, selected }.
+ * - ["*"] → { mode: "all", selected: [] }
+ * - ["ibalo", "hh"] → { mode: "include", selected: ["ibalo", "hh"] }
+ * - ["*", "!ibalo"] → { mode: "exclude", selected: ["ibalo"] }
+ */
+function parseSiteTargeting(sitesArray) {
+  if (!sitesArray || sitesArray.length === 0) return { mode: 'all', selected: [] };
+
+  const hasWildcard = sitesArray.includes('*');
+  const excludes = sitesArray.filter((s) => s.startsWith('!')).map((s) => s.slice(1));
+
+  if (hasWildcard && excludes.length > 0) {
+    return { mode: 'exclude', selected: excludes };
+  }
+  if (hasWildcard) {
+    return { mode: 'all', selected: [] };
+  }
+  return { mode: 'include', selected: sitesArray.filter((s) => !s.startsWith('!')) };
+}
+
+/**
+ * Build a sites array from mode + selected site IDs.
+ */
+function buildSiteTargeting(mode, selectedIds) {
+  if (mode === 'all') return ['*'];
+  if (mode === 'exclude') return ['*', ...selectedIds.map((id) => `!${id}`)];
+  return [...selectedIds]; // include
+}
+
+/**
+ * Check if an item is visible on a specific site.
+ */
+function isItemVisibleOnSite(item, siteId) {
+  const { mode, selected } = parseSiteTargeting(item.sites);
+  if (mode === 'all') return true;
+  if (mode === 'include') return selected.includes(siteId);
+  if (mode === 'exclude') return !selected.includes(siteId);
+  return true;
+}
+
+/**
+ * Get filtered items for the current site filter, considering status.
+ */
+function getFilteredItems() {
+  if (!activeSiteFilter) return items;
+  return items.filter((item) => {
+    const status = getStatus(item);
+    if (status === 'expired') return false;
+    return isItemVisibleOnSite(item, activeSiteFilter);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// View Switching
+// ---------------------------------------------------------------------------
+function switchView(view) {
+  activeView = view;
+  $$('.main-tab').forEach((tab) => {
+    tab.classList.toggle('active', tab.dataset.view === view);
+  });
+  dom.viewItems.hidden = view !== 'items';
+  dom.viewSites.hidden = view !== 'sites';
+}
+
+// ---------------------------------------------------------------------------
 // Render Item List
 // ---------------------------------------------------------------------------
 function render() {
-  const hasItems = items.length > 0;
-  dom.itemList.hidden = !hasItems;
-  dom.emptyState.hidden = hasItems;
+  renderItems();
+  renderSiteFilter();
+}
 
-  if (!hasItems) {
+function renderItems() {
+  const filtered = getFilteredItems();
+  const hasAnyItems = items.length > 0;
+  const hasFilteredItems = filtered.length > 0;
+  const isFiltering = activeSiteFilter !== '';
+
+  dom.itemList.hidden = !hasFilteredItems;
+  dom.emptyState.hidden = hasAnyItems || isFiltering;
+  dom.filterEmptyState.hidden = !isFiltering || hasFilteredItems || !hasAnyItems;
+
+  if (!hasFilteredItems) {
     dom.itemList.innerHTML = '';
     return;
   }
 
-  dom.itemList.innerHTML = items.map((item, i) => {
+  dom.itemList.innerHTML = filtered.map((item) => {
+    // Find original index for edit/delete operations
+    const originalIndex = items.indexOf(item);
     const status = getStatus(item);
     const locationBadges = (item.locations || [])
-      .map((loc) => `<span class="badge badge-location">${loc}</span>`)
+      .map((loc) => `<span class="badge badge-location">${escapeHtml(loc)}</span>`)
       .join('');
 
+    const siteTargeting = parseSiteTargeting(item.sites);
+    let siteLabel = 'All sites';
+    if (siteTargeting.mode === 'include') {
+      siteLabel = siteTargeting.selected.join(', ');
+    } else if (siteTargeting.mode === 'exclude') {
+      siteLabel = `All except ${siteTargeting.selected.join(', ')}`;
+    }
+
     return `
-      <div class="item-row" draggable="true" data-index="${i}">
+      <div class="item-row" draggable="true" data-index="${originalIndex}">
         <span class="drag-handle" title="Drag to reorder">&#9776;</span>
         <div class="item-info">
           <div class="item-title">${escapeHtml(item.title)}</div>
           <div class="item-meta">
             ${locationBadges}
+            <span class="badge badge-location" title="Site targeting">${escapeHtml(siteLabel)}</span>
           </div>
         </div>
         <span class="badge badge-status badge-${status}">${statusLabel(status)}</span>
         <span class="item-priority" title="Priority">#${item.priority}</span>
         <div class="item-actions">
-          <button type="button" class="btn btn-sm btn-secondary" data-action="edit" data-index="${i}">Edit</button>
-          <button type="button" class="btn btn-sm btn-danger" data-action="delete" data-index="${i}">Delete</button>
+          <button type="button" class="btn btn-sm btn-secondary" data-action="edit" data-index="${originalIndex}">Edit</button>
+          <button type="button" class="btn btn-sm btn-danger" data-action="delete" data-index="${originalIndex}">Delete</button>
         </div>
       </div>`;
   }).join('');
@@ -150,10 +286,50 @@ function render() {
   bindDragAndDrop();
 }
 
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
+// ---------------------------------------------------------------------------
+// Render Site Filter Dropdown
+// ---------------------------------------------------------------------------
+function renderSiteFilter() {
+  const current = dom.siteFilter.value;
+  dom.siteFilter.innerHTML = '<option value="">All items</option>';
+  sites.forEach((site) => {
+    const opt = document.createElement('option');
+    opt.value = site.id;
+    opt.textContent = `${site.name} (${site.id})`;
+    dom.siteFilter.appendChild(opt);
+  });
+  // Restore selection if still valid
+  if (sites.some((s) => s.id === current)) {
+    dom.siteFilter.value = current;
+  } else {
+    dom.siteFilter.value = '';
+    activeSiteFilter = '';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Render Sites List
+// ---------------------------------------------------------------------------
+function renderSites() {
+  const hasSites = sites.length > 0;
+  dom.siteList.hidden = !hasSites;
+  dom.sitesEmptyState.hidden = hasSites;
+
+  if (!hasSites) {
+    dom.siteList.innerHTML = '';
+    return;
+  }
+
+  dom.siteList.innerHTML = sites.map((site, i) => `
+    <div class="site-row" data-index="${i}">
+      <div class="site-info">
+        <div class="site-name">${escapeHtml(site.name)}</div>
+        <div class="site-id">${escapeHtml(site.id)}</div>
+      </div>
+      <button type="button" class="btn btn-sm btn-secondary" data-action="edit-site" data-index="${i}">Edit</button>
+      <button type="button" class="btn btn-sm btn-danger" data-action="delete-site" data-index="${i}">Delete</button>
+    </div>
+  `).join('');
 }
 
 // ---------------------------------------------------------------------------
@@ -162,7 +338,7 @@ function escapeHtml(str) {
 let dragIndex = null;
 
 function bindDragAndDrop() {
-  const rows = $$('.item-row');
+  const rows = dom.itemList.querySelectorAll('.item-row');
   rows.forEach((row) => {
     row.addEventListener('dragstart', onDragStart);
     row.addEventListener('dragover', onDragOver);
@@ -194,19 +370,18 @@ function onDrop(e) {
   const dropIndex = +e.currentTarget.dataset.index;
   if (dragIndex === null || dragIndex === dropIndex) return;
 
-  // Reorder items
   const [moved] = items.splice(dragIndex, 1);
   items.splice(dropIndex, 0, moved);
 
   // Recalculate priorities
   items.forEach((item, i) => (item.priority = i + 1));
-  render();
+  renderItems();
   toast('Priority updated');
 }
 
 function onDragEnd(e) {
   e.currentTarget.classList.remove('dragging');
-  $$('.item-row').forEach((r) => r.classList.remove('drag-over'));
+  dom.itemList.querySelectorAll('.item-row').forEach((r) => r.classList.remove('drag-over'));
   dragIndex = null;
 }
 
@@ -263,6 +438,62 @@ function updateStepUI() {
 }
 
 // ---------------------------------------------------------------------------
+// Wizard: Site Targeting UI
+// ---------------------------------------------------------------------------
+function renderSiteCheckboxes() {
+  dom.siteCheckboxes.innerHTML = '';
+
+  if (sites.length === 0) {
+    dom.siteNoSitesHint.hidden = false;
+    return;
+  }
+
+  dom.siteNoSitesHint.hidden = true;
+  sites.forEach((site) => {
+    const label = document.createElement('label');
+    label.className = 'checkbox-pill';
+    label.innerHTML = `
+      <input type="checkbox" value="${escapeHtml(site.id)}">
+      <span>${escapeHtml(site.name)}</span>
+    `;
+    dom.siteCheckboxes.appendChild(label);
+  });
+}
+
+function updateSiteTargetingUI() {
+  const mode = document.querySelector('input[name="site-mode"]:checked')?.value || 'all';
+
+  if (mode === 'all') {
+    dom.siteCheckboxesField.hidden = true;
+  } else {
+    dom.siteCheckboxesField.hidden = false;
+    dom.siteCheckboxesLabel.textContent =
+      mode === 'include' ? 'Select sites to include' : 'Select sites to exclude';
+  }
+}
+
+function getSiteTargetingFromUI() {
+  const mode = document.querySelector('input[name="site-mode"]:checked')?.value || 'all';
+  const selected = [...dom.siteCheckboxes.querySelectorAll('input:checked')].map((cb) => cb.value);
+  return buildSiteTargeting(mode, selected);
+}
+
+function setSiteTargetingUI(sitesArray) {
+  const { mode, selected } = parseSiteTargeting(sitesArray);
+
+  // Set radio
+  const radio = document.querySelector(`input[name="site-mode"][value="${mode}"]`);
+  if (radio) radio.checked = true;
+
+  updateSiteTargetingUI();
+
+  // Set checkboxes
+  dom.siteCheckboxes.querySelectorAll('input').forEach((cb) => {
+    cb.checked = selected.includes(cb.value);
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Wizard: Populate / Reset / Collect
 // ---------------------------------------------------------------------------
 function resetWizard() {
@@ -278,6 +509,10 @@ function resetWizard() {
   // Locations
   dom.locationsGroup.querySelectorAll('input').forEach((cb) => (cb.checked = false));
 
+  // Site targeting
+  renderSiteCheckboxes();
+  setSiteTargetingUI(['*']);
+
   // Chips
   chipTags = [];
   chipExclude = [];
@@ -286,6 +521,7 @@ function resetWizard() {
 
   clearValidation();
   updateImagePreview('');
+  idManuallyEdited = false;
 }
 
 function populateWizard(item) {
@@ -304,6 +540,10 @@ function populateWizard(item) {
     cb.checked = locs.includes(cb.value);
   });
 
+  // Site targeting
+  renderSiteCheckboxes();
+  setSiteTargetingUI(item.sites || ['*']);
+
   // Chips
   chipTags = [...(item.tags || [])];
   chipExclude = [...(item.exclude_if_plugin || [])];
@@ -312,6 +552,7 @@ function populateWizard(item) {
 
   clearValidation();
   updateImagePreview(item.image || '');
+  idManuallyEdited = !!item.id;
 }
 
 function collectItem() {
@@ -326,6 +567,7 @@ function collectItem() {
     priority: editingIndex >= 0 ? items[editingIndex].priority : items.length + 1,
     tags: [...chipTags],
     locations: [...dom.locationsGroup.querySelectorAll('input:checked')].map((cb) => cb.value),
+    sites: getSiteTargetingFromUI(),
     exclude_if_plugin: [...chipExclude],
     start_date: dom.fieldStartDate.value || null,
     end_date: dom.fieldEndDate.value || null,
@@ -362,7 +604,7 @@ function clearValidation() {
 }
 
 // ---------------------------------------------------------------------------
-// Save
+// Save Item
 // ---------------------------------------------------------------------------
 function saveItem() {
   if (!validateStep(currentStep)) return;
@@ -382,34 +624,138 @@ function saveItem() {
 }
 
 // ---------------------------------------------------------------------------
-// Delete
+// Delete (shared for items and sites)
 // ---------------------------------------------------------------------------
 let deleteTarget = -1;
+let deleteType = 'item'; // 'item' or 'site'
 
-function confirmDelete(index) {
+function confirmDelete(index, type = 'item') {
   deleteTarget = index;
-  dom.deleteItemName.textContent = items[index]?.title || '';
+  deleteType = type;
+
+  if (type === 'site') {
+    dom.deleteDialogHeading.textContent = 'Delete this site?';
+    dom.deleteItemName.textContent = sites[index]?.name || '';
+  } else {
+    dom.deleteDialogHeading.textContent = 'Delete this item?';
+    dom.deleteItemName.textContent = items[index]?.title || '';
+  }
+
   dom.deleteDialog.showModal();
 }
 
 function executeDelete() {
   if (deleteTarget < 0) return;
-  items.splice(deleteTarget, 1);
-  // Recalculate priorities
-  items.forEach((item, i) => (item.priority = i + 1));
+
+  if (deleteType === 'site') {
+    sites.splice(deleteTarget, 1);
+    renderSites();
+    renderSiteFilter();
+    renderItems();
+    toast('Site deleted');
+  } else {
+    items.splice(deleteTarget, 1);
+    items.forEach((item, i) => (item.priority = i + 1));
+    render();
+    toast('Item deleted');
+  }
+
   deleteTarget = -1;
-  render();
-  toast('Item deleted');
+}
+
+// ---------------------------------------------------------------------------
+// Site Modal
+// ---------------------------------------------------------------------------
+let siteIdManuallyEdited = false;
+
+function openSiteModal(index = -1) {
+  editingSiteIndex = index;
+  siteIdManuallyEdited = false;
+
+  dom.errorSiteName.hidden = true;
+  dom.errorSiteId.hidden = true;
+  dom.fieldSiteName.classList.remove('error');
+  dom.fieldSiteId.classList.remove('error');
+
+  if (index >= 0) {
+    dom.siteModalTitle.textContent = 'Edit Site';
+    dom.fieldSiteName.value = sites[index].name;
+    dom.fieldSiteId.value = sites[index].id;
+    siteIdManuallyEdited = true;
+  } else {
+    dom.siteModalTitle.textContent = 'Add Site';
+    dom.fieldSiteName.value = '';
+    dom.fieldSiteId.value = '';
+  }
+
+  dom.siteModal.hidden = false;
+}
+
+function closeSiteModal() {
+  dom.siteModal.hidden = true;
+}
+
+function saveSite() {
+  const name = dom.fieldSiteName.value.trim();
+  const id = dom.fieldSiteId.value.trim() || slugify(name);
+
+  // Validate
+  let valid = true;
+  dom.errorSiteName.hidden = true;
+  dom.errorSiteId.hidden = true;
+  dom.fieldSiteName.classList.remove('error');
+  dom.fieldSiteId.classList.remove('error');
+
+  if (!name) {
+    dom.errorSiteName.hidden = false;
+    dom.fieldSiteName.classList.add('error');
+    valid = false;
+  }
+
+  // Check duplicate ID (allow same ID when editing same site)
+  const duplicate = sites.findIndex((s) => s.id === id);
+  if (duplicate >= 0 && duplicate !== editingSiteIndex) {
+    dom.errorSiteId.hidden = false;
+    dom.fieldSiteId.classList.add('error');
+    valid = false;
+  }
+
+  if (!valid) return;
+
+  if (editingSiteIndex >= 0) {
+    const oldId = sites[editingSiteIndex].id;
+    sites[editingSiteIndex] = { id, name };
+
+    // Update item site references if ID changed
+    if (oldId !== id) {
+      items.forEach((item) => {
+        if (!item.sites) return;
+        item.sites = item.sites.map((s) => {
+          if (s === oldId) return id;
+          if (s === `!${oldId}`) return `!${id}`;
+          return s;
+        });
+      });
+    }
+
+    toast('Site updated', 'success');
+  } else {
+    sites.push({ id, name });
+    toast('Site added', 'success');
+  }
+
+  closeSiteModal();
+  renderSites();
+  renderSiteFilter();
+  renderItems();
 }
 
 // ---------------------------------------------------------------------------
 // Chips
 // ---------------------------------------------------------------------------
 function renderChips(wrapper, input, chipArray) {
-  // Remove existing chips
   wrapper.querySelectorAll('.chip').forEach((c) => c.remove());
 
-  // Insert chips before the input
   chipArray.forEach((value, i) => {
     const chip = document.createElement('span');
     chip.className = 'chip';
@@ -422,7 +768,6 @@ function addChip(input, chipArray, wrapper) {
   const raw = input.value.trim().replace(/,+$/, '').trim();
   if (!raw) return;
 
-  // Split by comma for pasting multiple at once
   const values = raw.split(',').map((v) => v.trim()).filter(Boolean);
   values.forEach((v) => {
     if (!chipArray.includes(v)) chipArray.push(v);
@@ -485,18 +830,14 @@ function closeImportModal() {
 }
 
 function executeImport() {
-  // Try file first
   const file = dom.importFile.files?.[0];
   if (file) {
     const reader = new FileReader();
-    reader.onload = (e) => {
-      parseAndLoadFeed(e.target.result);
-    };
+    reader.onload = (e) => parseAndLoadFeed(e.target.result);
     reader.readAsText(file);
     return;
   }
 
-  // Fall back to textarea
   const text = dom.importTextarea.value.trim();
   if (!text) {
     toast('No JSON provided', 'error');
@@ -511,21 +852,32 @@ function parseAndLoadFeed(jsonString) {
     if (!data.items || !Array.isArray(data.items)) {
       throw new Error('Missing "items" array');
     }
+
+    // Load sites
+    if (Array.isArray(data.sites)) {
+      sites = data.sites.map((s) => ({
+        id: s.id || slugify(s.name || ''),
+        name: s.name || s.id || '',
+      }));
+    }
+
+    // Load items
     items = data.items;
-    // Ensure all items have required fields
     items.forEach((item, i) => {
       item.priority = item.priority ?? i + 1;
       item.tags = item.tags ?? [];
       item.locations = item.locations ?? [];
+      item.sites = item.sites ?? ['*'];
       item.exclude_if_plugin = item.exclude_if_plugin ?? [];
       item.start_date = item.start_date ?? null;
       item.end_date = item.end_date ?? null;
     });
-    // Sort by priority
     items.sort((a, b) => a.priority - b.priority);
+
     render();
+    renderSites();
     closeImportModal();
-    toast(`Imported ${items.length} item(s)`, 'success');
+    toast(`Imported ${items.length} item(s) and ${sites.length} site(s)`, 'success');
   } catch (err) {
     toast(`Invalid JSON: ${err.message}`, 'error');
   }
@@ -534,6 +886,7 @@ function parseAndLoadFeed(jsonString) {
 function exportFeed() {
   const feed = {
     version: 1,
+    sites: sites.map((s) => ({ id: s.id, name: s.name })),
     items: items
       .slice()
       .sort((a, b) => a.priority - b.priority)
@@ -547,6 +900,7 @@ function exportFeed() {
         priority: item.priority,
         tags: item.tags,
         locations: item.locations,
+        sites: item.sites,
         exclude_if_plugin: item.exclude_if_plugin,
         start_date: item.start_date,
         end_date: item.end_date,
@@ -555,13 +909,11 @@ function exportFeed() {
 
   const json = JSON.stringify(feed, null, 2);
 
-  // Copy to clipboard
   navigator.clipboard.writeText(json).then(
     () => toast('JSON copied to clipboard', 'success'),
     () => toast('Could not copy to clipboard', 'error')
   );
 
-  // Also download as file
   const blob = new Blob([json + '\n'], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -588,9 +940,20 @@ function handleTitleInput() {
 // Event Listeners
 // ---------------------------------------------------------------------------
 function init() {
+  // Main tabs
+  $$('.main-tab').forEach((tab) => {
+    tab.addEventListener('click', () => switchView(tab.dataset.view));
+  });
+
   // Add item buttons
   $('#btn-add').addEventListener('click', () => openWizard());
   $('#btn-add-empty').addEventListener('click', () => openWizard());
+
+  // Site filter
+  dom.siteFilter.addEventListener('change', () => {
+    activeSiteFilter = dom.siteFilter.value;
+    renderItems();
+  });
 
   // Import / Export
   $('#btn-import').addEventListener('click', openImportModal);
@@ -610,12 +973,10 @@ function init() {
   $$('.step-tab').forEach((tab) => {
     tab.addEventListener('click', () => {
       const target = +tab.dataset.step;
-      // Only allow going to steps we've passed (or current), or validate first
       if (target <= currentStep) {
         currentStep = target;
         updateStepUI();
       } else {
-        // Try to advance step by step
         for (let s = currentStep; s < target; s++) {
           if (!validateStep(s)) return;
         }
@@ -624,6 +985,9 @@ function init() {
       }
     });
   });
+
+  // Site targeting radio change
+  dom.siteTargetingMode.addEventListener('change', updateSiteTargetingUI);
 
   // Live preview updates
   dom.fieldTitle.addEventListener('input', handleTitleInput);
@@ -651,7 +1015,6 @@ function init() {
       e.preventDefault();
       addChip(dom.tagsInput, chipTags, dom.tagsWrapper);
     }
-    // Backspace removes last chip when input is empty
     if (e.key === 'Backspace' && !dom.tagsInput.value && chipTags.length) {
       chipTags.pop();
       renderChips(dom.tagsWrapper, dom.tagsInput, chipTags);
@@ -693,7 +1056,36 @@ function init() {
     if (!btn) return;
     const index = +btn.dataset.index;
     if (btn.dataset.action === 'edit') openWizard(index);
-    if (btn.dataset.action === 'delete') confirmDelete(index);
+    if (btn.dataset.action === 'delete') confirmDelete(index, 'item');
+  });
+
+  // Site list: edit/delete (delegated)
+  dom.siteList.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const index = +btn.dataset.index;
+    if (btn.dataset.action === 'edit-site') openSiteModal(index);
+    if (btn.dataset.action === 'delete-site') confirmDelete(index, 'site');
+  });
+
+  // Add site buttons
+  $('#btn-add-site').addEventListener('click', () => openSiteModal());
+  $('#btn-add-site-empty').addEventListener('click', () => openSiteModal());
+
+  // Site modal
+  $('#site-modal-close').addEventListener('click', closeSiteModal);
+  $('#site-modal-cancel').addEventListener('click', closeSiteModal);
+  $('#site-modal-save').addEventListener('click', saveSite);
+
+  // Auto-generate site ID from name
+  dom.fieldSiteName.addEventListener('input', () => {
+    if (!siteIdManuallyEdited || !dom.fieldSiteId.value.trim()) {
+      dom.fieldSiteId.value = slugify(dom.fieldSiteName.value);
+    }
+  });
+
+  dom.fieldSiteId.addEventListener('input', () => {
+    siteIdManuallyEdited = dom.fieldSiteId.value.trim() !== '';
   });
 
   // Delete dialog
@@ -711,20 +1103,22 @@ function init() {
   dom.importModal.addEventListener('click', (e) => {
     if (e.target === dom.importModal) closeImportModal();
   });
+  dom.siteModal.addEventListener('click', (e) => {
+    if (e.target === dom.siteModal) closeSiteModal();
+  });
 
   // Escape key closes modals
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (!dom.wizardModal.hidden) closeWizard();
       if (!dom.importModal.hidden) closeImportModal();
+      if (!dom.siteModal.hidden) closeSiteModal();
     }
   });
 
-  // Wizard open resets the manual-edit flag
-  const origOpen = openWizard;
-
   // Initial render
   render();
+  renderSites();
 }
 
 // ---------------------------------------------------------------------------
