@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feed Editor — CMS Upselling</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="app-header">
+      <h1>Feed Editor</h1>
+      <div class="app-header-actions">
+        <button type="button" class="btn btn-secondary" id="btn-import">Import JSON</button>
+        <button type="button" class="btn btn-secondary" id="btn-export">Export JSON</button>
+        <button type="button" class="btn btn-primary" id="btn-add">+ Add Item</button>
+      </div>
+    </header>
+
+    <!-- Item List -->
+    <div class="item-list" id="item-list">
+      <!-- Populated by JS -->
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="empty-state" hidden>
+      <div class="empty-state-icon">&#128230;</div>
+      <h2>No items yet</h2>
+      <p>Add your first upselling item to get started.</p>
+      <button type="button" class="btn btn-primary" id="btn-add-empty">+ Add Item</button>
+    </div>
+  </div>
+
+  <!-- Wizard Modal -->
+  <div class="modal-backdrop" id="wizard-modal" hidden>
+    <div class="modal">
+      <div class="modal-main">
+        <div class="modal-header">
+          <h2 id="wizard-title">Add Item</h2>
+          <button type="button" class="btn btn-icon btn-ghost" id="wizard-close" aria-label="Close">&times;</button>
+        </div>
+
+        <div class="steps" role="tablist">
+          <button type="button" class="step-tab active" data-step="0" role="tab">Basics</button>
+          <button type="button" class="step-tab" data-step="1" role="tab">Call to Action</button>
+          <button type="button" class="step-tab" data-step="2" role="tab">Targeting</button>
+          <button type="button" class="step-tab" data-step="3" role="tab">Planning</button>
+          <button type="button" class="step-tab" data-step="4" role="tab">Media</button>
+        </div>
+
+        <div class="step-content">
+          <!-- Step 0: Basics -->
+          <div class="step-panel active" data-step="0">
+            <div class="field">
+              <label for="field-title">Title *</label>
+              <input type="text" id="field-title" placeholder="e.g. Vitaliteitsplan">
+              <span class="error-msg" id="error-title" hidden>Title is required</span>
+            </div>
+            <div class="field">
+              <label for="field-description">Description *</label>
+              <textarea id="field-description" rows="3" placeholder="Short description of the upselling item"></textarea>
+              <span class="error-msg" id="error-description" hidden>Description is required</span>
+            </div>
+            <div class="field">
+              <label for="field-id">ID (slug)</label>
+              <input type="text" id="field-id" placeholder="auto-generated-from-title">
+              <span class="field-hint">Auto-generated from title. Edit to override.</span>
+            </div>
+          </div>
+
+          <!-- Step 1: Call to Action -->
+          <div class="step-panel" data-step="1">
+            <div class="field">
+              <label for="field-cta-label">CTA Label</label>
+              <input type="text" id="field-cta-label" placeholder="e.g. Meer info">
+            </div>
+            <div class="field">
+              <label for="field-cta-url">CTA URL</label>
+              <input type="url" id="field-cta-url" placeholder="https://diezit.nl/...">
+            </div>
+            <div class="field">
+              <label>URL with UTM parameters</label>
+              <div class="field-readonly" id="utm-preview">—</div>
+              <span class="field-hint">UTM parameters are added automatically (utm_source=cms, utm_medium=widget, utm_campaign={item-id})</span>
+            </div>
+          </div>
+
+          <!-- Step 2: Targeting -->
+          <div class="step-panel" data-step="2">
+            <div class="field">
+              <label>Locations</label>
+              <div class="checkbox-group" id="locations-group">
+                <label class="checkbox-pill">
+                  <input type="checkbox" value="dashboard">
+                  <span>Dashboard</span>
+                </label>
+                <label class="checkbox-pill">
+                  <input type="checkbox" value="pages-sidebar">
+                  <span>Pages Sidebar</span>
+                </label>
+                <label class="checkbox-pill">
+                  <input type="checkbox" value="pages-editor">
+                  <span>Pages Editor</span>
+                </label>
+                <label class="checkbox-pill">
+                  <input type="checkbox" value="media-manager">
+                  <span>Media Manager</span>
+                </label>
+              </div>
+            </div>
+            <div class="field">
+              <label>Tags</label>
+              <div class="chip-input-wrapper" id="tags-wrapper">
+                <input type="text" class="chip-input" id="tags-input" placeholder="Type and press Enter">
+              </div>
+              <span class="field-hint">Press Enter or comma to add a tag</span>
+            </div>
+            <div class="field">
+              <label>Exclude if plugin installed</label>
+              <div class="chip-input-wrapper" id="exclude-wrapper">
+                <input type="text" class="chip-input" id="exclude-input" placeholder="e.g. diezit/vitaliteitsplan">
+              </div>
+              <span class="field-hint">Press Enter or comma to add a plugin identifier</span>
+            </div>
+          </div>
+
+          <!-- Step 3: Planning -->
+          <div class="step-panel" data-step="3">
+            <div class="field">
+              <label for="field-start-date">Start Date</label>
+              <input type="date" id="field-start-date">
+              <span class="field-hint">Leave empty for immediate availability</span>
+            </div>
+            <div class="field">
+              <label for="field-end-date">End Date</label>
+              <input type="date" id="field-end-date">
+              <span class="field-hint">Leave empty for no expiration</span>
+            </div>
+          </div>
+
+          <!-- Step 4: Media -->
+          <div class="step-panel" data-step="4">
+            <div class="field">
+              <label for="field-image">Image URL</label>
+              <input type="url" id="field-image" placeholder="https://cdn.diezit.nl/upselling/...">
+            </div>
+            <div class="image-preview-box" id="image-preview">
+              <span class="placeholder">No image</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-prev" hidden>Previous</button>
+          <div class="modal-footer-end">
+            <button type="button" class="btn btn-secondary" id="btn-cancel">Cancel</button>
+            <button type="button" class="btn btn-primary" id="btn-next">Next</button>
+            <button type="button" class="btn btn-primary" id="btn-save" hidden>Save</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Preview -->
+      <div class="preview-sidebar">
+        <h3>Widget Preview</h3>
+        <div class="preview-card">
+          <div class="preview-card-image" id="preview-image">
+            <span class="placeholder">No image</span>
+          </div>
+          <div class="preview-card-body">
+            <div class="preview-card-title" id="preview-title">Item title</div>
+            <div class="preview-card-desc" id="preview-desc">Item description will appear here.</div>
+            <a href="#" class="preview-card-cta" id="preview-cta">CTA</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Modal -->
+  <div class="modal-backdrop import-modal" id="import-modal" hidden>
+    <div class="modal">
+      <div class="modal-main">
+        <div class="modal-header">
+          <h2>Import JSON</h2>
+          <button type="button" class="btn btn-icon btn-ghost" id="import-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="step-content">
+          <div class="field">
+            <label for="import-file">Upload file</label>
+            <input type="file" id="import-file" accept=".json,application/json">
+          </div>
+          <div class="field">
+            <label for="import-textarea">Or paste JSON</label>
+            <textarea id="import-textarea" class="import-area" placeholder='{"version":1,"items":[...]}'></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="modal-footer-end">
+            <button type="button" class="btn btn-secondary" id="import-cancel">Cancel</button>
+            <button type="button" class="btn btn-primary" id="import-confirm">Import</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirm Dialog -->
+  <dialog id="delete-dialog">
+    <form method="dialog">
+      <p style="margin-block-end:1rem;font-weight:600;">Delete this item?</p>
+      <p style="margin-block-end:1.5rem;color:var(--color-text-muted);font-size:0.875rem;">
+        This action cannot be undone. The item <strong id="delete-item-name"></strong> will be permanently removed.
+      </p>
+      <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+        <button type="button" class="btn btn-secondary" id="delete-cancel">Cancel</button>
+        <button type="submit" class="btn btn-danger" value="confirm">Delete</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
