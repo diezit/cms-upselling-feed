@@ -1102,7 +1102,7 @@ function init() {
       executeDelete();
     }
   });
-  $('#delete-cancel').addEventListener('click', () => dom.deleteDialog.close());
+  $('#delete-cancel').addEventListener('click', () => dom.deleteDialog.close('cancel'));
 
   // Close dialogs on backdrop click (click on the <dialog> element itself = backdrop)
   [dom.wizardModal, dom.importModal, dom.siteModal].forEach((dialog) => {
