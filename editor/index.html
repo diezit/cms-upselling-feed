@@ -109,6 +109,11 @@
               <span class="error-msg" id="error-title" hidden>Title is required</span>
             </div>
             <div class="field">
+              <label for="field-subtitle">Subtitle</label>
+              <input type="text" id="field-subtitle" placeholder="e.g. Website gezondheidscheck">
+              <span class="field-hint">Optional tagline shown below the title.</span>
+            </div>
+            <div class="field">
               <label for="field-description">Description *</label>
               <textarea id="field-description" rows="3" placeholder="Short description of the upselling item"></textarea>
               <span class="error-msg" id="error-description" hidden>Description is required</span>
@@ -243,14 +248,15 @@
       <!-- Live Preview -->
       <div class="preview-sidebar">
         <h3>Widget Preview</h3>
-        <div class="preview-card">
-          <div class="preview-card-image" id="preview-image">
+        <div class="preview-banner">
+          <div class="preview-banner-image" id="preview-image">
             <span class="placeholder">No image</span>
           </div>
-          <div class="preview-card-body">
-            <div class="preview-card-title" id="preview-title">Item title</div>
-            <div class="preview-card-desc" id="preview-desc">Item description will appear here.</div>
-            <a href="#" class="preview-card-cta" id="preview-cta">CTA</a>
+          <div class="preview-banner-content">
+            <div class="preview-banner-title" id="preview-title">Item title</div>
+            <div class="preview-banner-subtitle" id="preview-subtitle"></div>
+            <div class="preview-banner-desc" id="preview-desc">Item description will appear here.</div>
+            <a href="#" class="preview-banner-cta" id="preview-cta">CTA</a>
           </div>
         </div>
       </div>

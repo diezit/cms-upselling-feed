@@ -9,6 +9,7 @@
     {
       "id": "vitaliteitsplan-2026",
       "title": "Vitaliteitsplan",
+      "subtitle": "Website gezondheidscheck",
       "description": "Laat je website doorlichten op performance en SEO. Wij analyseren je site en geven concrete verbeterpunten.",
       "cta_label": "Meer info",
       "cta_url": "https://diezit.nl/vitaliteitsplan",
@@ -24,6 +25,7 @@
     {
       "id": "cookie-consent-pro",
       "title": "Cookie Consent Pro",
+      "subtitle": "AVG-compliant in één klik",
       "description": "Volledig AVG-compliant cookie consent met automatische script-blocking en analytics dashboard.",
       "cta_label": "Bekijk plugin",
       "cta_url": "https://diezit.nl/plugins/cookie-consent-pro",
@@ -39,6 +41,7 @@
     {
       "id": "backup-manager",
       "title": "Backup Manager",
+      "subtitle": "Dagelijkse backups, één-klik herstel",
       "description": "Automatische dagelijkse backups van je database en media bestanden. Herstel met één klik.",
       "cta_label": "Installeer nu",
       "cta_url": "https://diezit.nl/plugins/backup-manager",

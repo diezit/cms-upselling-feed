@@ -64,6 +64,7 @@ const dom = {
   toastContainer: $('#toast-container'),
   // Wizard fields
   fieldTitle: $('#field-title'),
+  fieldSubtitle: $('#field-subtitle'),
   fieldDesc: $('#field-description'),
   fieldId: $('#field-id'),
   fieldCtaLabel: $('#field-cta-label'),
@@ -90,6 +91,7 @@ const dom = {
   // Preview
   previewImage: $('#preview-image'),
   previewTitle: $('#preview-title'),
+  previewSubtitle: $('#preview-subtitle'),
   previewDesc: $('#preview-desc'),
   previewCta: $('#preview-cta'),
   // Buttons
@@ -498,6 +500,7 @@ function setSiteTargetingUI(sitesArray) {
 // ---------------------------------------------------------------------------
 function resetWizard() {
   dom.fieldTitle.value = '';
+  dom.fieldSubtitle.value = '';
   dom.fieldDesc.value = '';
   dom.fieldId.value = '';
   dom.fieldCtaLabel.value = '';
@@ -526,6 +529,7 @@ function resetWizard() {
 
 function populateWizard(item) {
   dom.fieldTitle.value = item.title || '';
+  dom.fieldSubtitle.value = item.subtitle || '';
   dom.fieldDesc.value = item.description || '';
   dom.fieldId.value = item.id || '';
   dom.fieldCtaLabel.value = item.cta_label || '';
@@ -560,6 +564,7 @@ function collectItem() {
   return {
     id,
     title: dom.fieldTitle.value.trim(),
+    subtitle: dom.fieldSubtitle.value.trim(),
     description: dom.fieldDesc.value.trim(),
     cta_label: dom.fieldCtaLabel.value.trim(),
     cta_url: dom.fieldCtaUrl.value.trim(),
@@ -787,11 +792,13 @@ function removeChip(index, chipArray, wrapper, input) {
 // ---------------------------------------------------------------------------
 function updatePreview() {
   const title = dom.fieldTitle.value.trim() || 'Item title';
+  const subtitle = dom.fieldSubtitle.value.trim();
   const desc = dom.fieldDesc.value.trim() || 'Item description will appear here.';
   const ctaLabel = dom.fieldCtaLabel.value.trim() || 'CTA';
   const imageUrl = dom.fieldImage.value.trim();
 
   dom.previewTitle.textContent = title;
+  dom.previewSubtitle.textContent = subtitle;
   dom.previewDesc.textContent = desc;
   dom.previewCta.textContent = ctaLabel;
 
@@ -873,6 +880,7 @@ function parseAndLoadFeed(jsonString) {
     items = data.items;
     items.forEach((item, i) => {
       item.priority = item.priority ?? i + 1;
+      item.subtitle = item.subtitle ?? '';
       item.tags = item.tags ?? [];
       item.locations = item.locations ?? [];
       item.sites = item.sites ?? ['*'];
@@ -901,6 +909,7 @@ function exportFeed() {
       .map((item) => ({
         id: item.id,
         title: item.title,
+        subtitle: item.subtitle || '',
         description: item.description,
         cta_label: item.cta_label,
         cta_url: item.cta_url,
@@ -999,6 +1008,7 @@ function init() {
 
   // Live preview updates
   dom.fieldTitle.addEventListener('input', handleTitleInput);
+  dom.fieldSubtitle.addEventListener('input', updatePreview);
   dom.fieldDesc.addEventListener('input', updatePreview);
   dom.fieldCtaLabel.addEventListener('input', updatePreview);
   dom.fieldCtaUrl.addEventListener('input', () => {
