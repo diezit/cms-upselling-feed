@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "sites": [
+    { "id": "ibalo", "name": "Ibalo" },
+    { "id": "buitengoed", "name": "Buitengoed" },
+    { "id": "hh", "name": "Healthy Hairdresser" }
+  ],
+  "items": [
+    {
+      "id": "vitaliteitsplan-2026",
+      "title": "Vitaliteitsplan",
+      "description": "Laat je website doorlichten op performance en SEO. Wij analyseren je site en geven concrete verbeterpunten.",
+      "cta_label": "Meer info",
+      "cta_url": "https://diezit.nl/vitaliteitsplan",
+      "image": "https://cdn.diezit.nl/upselling/vitaal.png",
+      "priority": 1,
+      "tags": ["seo", "performance"],
+      "locations": ["dashboard", "pages-sidebar"],
+      "sites": ["*"],
+      "exclude_if_plugin": ["diezit/vitaliteitsplan"],
+      "start_date": "2026-05-01",
+      "end_date": null
+    },
+    {
+      "id": "cookie-consent-pro",
+      "title": "Cookie Consent Pro",
+      "description": "Volledig AVG-compliant cookie consent met automatische script-blocking en analytics dashboard.",
+      "cta_label": "Bekijk plugin",
+      "cta_url": "https://diezit.nl/plugins/cookie-consent-pro",
+      "image": "https://cdn.diezit.nl/upselling/cookie.png",
+      "priority": 2,
+      "tags": ["privacy", "avg", "cookies"],
+      "locations": ["dashboard", "pages-editor"],
+      "sites": ["*", "!hh"],
+      "exclude_if_plugin": ["diezit/cookieconsent"],
+      "start_date": "2026-04-01",
+      "end_date": "2026-12-31"
+    },
+    {
+      "id": "backup-manager",
+      "title": "Backup Manager",
+      "description": "Automatische dagelijkse backups van je database en media bestanden. Herstel met één klik.",
+      "cta_label": "Installeer nu",
+      "cta_url": "https://diezit.nl/plugins/backup-manager",
+      "image": "https://cdn.diezit.nl/upselling/backup.png",
+      "priority": 3,
+      "tags": ["backup", "security"],
+      "locations": ["dashboard", "media-manager"],
+      "sites": ["ibalo", "buitengoed"],
+      "exclude_if_plugin": ["diezit/backupmanager"],
+      "start_date": null,
+      "end_date": null
+    }
+  ]
+}
