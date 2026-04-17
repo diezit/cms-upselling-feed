@@ -28,6 +28,14 @@
   --color-warning: #f59e0b;
   --color-tag-bg: #e0e7ff;
   --color-tag-text: #3730a3;
+  --color-badge-active-bg: #dcfce7;
+  --color-badge-active-text: #166534;
+  --color-badge-scheduled-bg: #fef3c7;
+  --color-badge-scheduled-text: #92400e;
+  --color-badge-expired-bg: #fee2e2;
+  --color-badge-expired-text: #991b1b;
+  --color-badge-always-bg: #e0e7ff;
+  --color-badge-always-text: #3730a3;
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 12px;
@@ -334,23 +342,23 @@ body {
 }
 
 .badge-active {
-  background: #dcfce7;
-  color: #166534;
+  background: var(--color-badge-active-bg);
+  color: var(--color-badge-active-text);
 }
 
 .badge-scheduled {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--color-badge-scheduled-bg);
+  color: var(--color-badge-scheduled-text);
 }
 
 .badge-expired {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--color-badge-expired-bg);
+  color: var(--color-badge-expired-text);
 }
 
 .badge-always {
-  background: #e0e7ff;
-  color: #3730a3;
+  background: var(--color-badge-always-bg);
+  color: var(--color-badge-always-text);
 }
 
 .item-priority {
@@ -366,21 +374,28 @@ body {
   gap: 0.25rem;
 }
 
-/* ---------- Modal / Wizard Overlay ---------- */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgb(0 0 0 / 0.4);
+/* ---------- Modal / Wizard Dialog ---------- */
+.wizard-dialog {
+  border: none;
+  padding: 0;
+  background: transparent;
+  max-width: none;
+  max-height: none;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
   display: flex;
   align-items: flex-start;
   justify-content: center;
   padding-block-start: 5vh;
-  z-index: 100;
-  overflow-y: auto;
 }
 
-.modal-backdrop[hidden] {
-  display: none;
+.wizard-dialog::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}
+
+.wizard-dialog[open] {
+  display: flex;
 }
 
 .modal {
@@ -840,6 +855,38 @@ body {
 .import-modal .modal {
   grid-template-columns: 1fr;
   width: min(560px, 95vw);
+}
+
+/* ---------- Delete Dialog ---------- */
+.delete-dialog {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  max-width: 400px;
+  box-shadow: var(--shadow-lg);
+  font-family: var(--font-sans);
+  color: var(--color-text);
+}
+
+.delete-dialog::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}
+
+.delete-dialog-heading {
+  font-weight: 600;
+  margin-block-end: 1rem;
+}
+
+.delete-dialog-body {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  margin-block-end: 1.5rem;
+}
+
+.delete-dialog-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
 }
 
 /* ---------- Toast ---------- */

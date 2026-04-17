@@ -402,11 +402,11 @@ function openWizard(index = -1) {
 
   updateStepUI();
   updatePreview();
-  dom.wizardModal.hidden = false;
+  dom.wizardModal.showModal();
 }
 
 function closeWizard() {
-  dom.wizardModal.hidden = true;
+  dom.wizardModal.close();
   clearValidation();
 }
 
@@ -688,11 +688,11 @@ function openSiteModal(index = -1) {
     dom.fieldSiteId.value = '';
   }
 
-  dom.siteModal.hidden = false;
+  dom.siteModal.showModal();
 }
 
 function closeSiteModal() {
-  dom.siteModal.hidden = true;
+  dom.siteModal.close();
 }
 
 function saveSite() {
@@ -822,11 +822,11 @@ function updateImagePreview(url) {
 function openImportModal() {
   dom.importTextarea.value = '';
   dom.importFile.value = '';
-  dom.importModal.hidden = false;
+  dom.importModal.showModal();
 }
 
 function closeImportModal() {
-  dom.importModal.hidden = true;
+  dom.importModal.close();
 }
 
 function executeImport() {
@@ -851,6 +851,14 @@ function parseAndLoadFeed(jsonString) {
     const data = JSON.parse(jsonString);
     if (!data.items || !Array.isArray(data.items)) {
       throw new Error('Missing "items" array');
+    }
+
+    // Confirm overwrite when there is existing data
+    if (items.length > 0 || sites.length > 0) {
+      const confirmed = confirm(
+        `This will replace all current data (${items.length} item(s), ${sites.length} site(s)). Continue?`
+      );
+      if (!confirmed) return;
     }
 
     // Load sites
@@ -1096,23 +1104,17 @@ function init() {
   });
   $('#delete-cancel').addEventListener('click', () => dom.deleteDialog.close());
 
-  // Close modals on backdrop click
-  dom.wizardModal.addEventListener('click', (e) => {
-    if (e.target === dom.wizardModal) closeWizard();
-  });
-  dom.importModal.addEventListener('click', (e) => {
-    if (e.target === dom.importModal) closeImportModal();
-  });
-  dom.siteModal.addEventListener('click', (e) => {
-    if (e.target === dom.siteModal) closeSiteModal();
+  // Close dialogs on backdrop click (click on the <dialog> element itself = backdrop)
+  [dom.wizardModal, dom.importModal, dom.siteModal].forEach((dialog) => {
+    dialog.addEventListener('click', (e) => {
+      if (e.target === dialog) dialog.close();
+    });
   });
 
-  // Escape key closes modals
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      if (!dom.wizardModal.hidden) closeWizard();
-      if (!dom.importModal.hidden) closeImportModal();
-      if (!dom.siteModal.hidden) closeSiteModal();
+  // Warn before leaving when there is unsaved data
+  window.addEventListener('beforeunload', (e) => {
+    if (items.length > 0 || sites.length > 0) {
+      e.preventDefault();
     }
   });
 
